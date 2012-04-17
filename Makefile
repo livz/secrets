@@ -7,24 +7,34 @@ CCFLAGS=/EHsc /W4
 all:protect encrypt decrypt lsaSecretRead lsaSecretStore
 
 protect: $@.cpp
-	@echo ---------Building $@: 
+	@echo ---------Start building $@:
 	$(CC) $(CCFLAGS) $@.cpp
+	@echo ---------End building $@:
 
 encrypt: $@.cpp
-	@echo ---------Building $@:
+	@echo ---------Start building $@:
 	$(CC) $(CCFLAGS) $@.cpp
+	@echo ---------End building $@:
 
 decrypt: $@.cpp
-	@echo ---------Building $@:
+	@echo ---------Start building $@:
 	$(CC) $(CCFLAGS) $@.cpp
+	@echo ---------End building $@:
 
-lsaSecretRead: $@.cpp
-	@echo ---------Building $@:
-	$(CC) $(CCFLAGS) $@.cpp lsa_util.cpp
+lsa_util: $@.cpp
+	@echo ---------Start building $@:
+	$(CC) $(CCFLAGS) /c $@.cpp
+	@echo ---------End building $@:
 
-lsaSecretStore: $@.cpp
-	@echo ---------Building $@:
-	$(CC) $(CCFLAGS) $@.cpp lsa_util.cpp
+lsaSecretRead: lsa_util $@.cpp
+	@echo ---------Start building $@:
+	$(CC) $(CCFLAGS) $@.cpp lsa_util.obj
+	@echo ---------End building $@:
+
+lsaSecretStore: lsa_util $@.cpp
+	@echo ---------Start building $@:
+	$(CC) $(CCFLAGS) $@.cpp lsa_util.obj
+	@echo ---------End building $@:
 		
 clean:
 	del *.obj
