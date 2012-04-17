@@ -117,7 +117,14 @@ BOOL ReadPrivateDataObject(
 	}
 	else 
 	{
-		wprintf(L"Buffer data: %s len: %d\n", lucPrivateData->Buffer, lucPrivateData->Length);
+		// lucPrivateData->Buffer : LSA_UNICODE_STRING  buffer might not be null-terminated !
+		// lucPrivateData->Length : Length, in bytes, not including the null terminator, if any
+
+		printf("Buffer data len: %d characters. Data: ", lucPrivateData->Length/2);
+		CHAR *pBuf = (CHAR *)lucPrivateData->Buffer;
+		for(int i=0; i<lucPrivateData->Length; i+=2) {
+			printf("%c", pBuf[i]);
+		}
 	}
 	
 	LsaFreeMemory(lucPrivateData);
