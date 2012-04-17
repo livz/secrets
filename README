@@ -1,0 +1,19 @@
+1. Utils:
+	- encrypt/decrypt:
+		Programatic example to fie encryption/decryption using the Enhanced CSP
+		(Cryptographic Service Provider) from Win XP
+		
+	- protect: 
+		Programatic example for Windows Data protection API (DPAPI) user interface.
+		Protect and get info from data blobs.
+		
+	- lsaSecretStore/lsaSecretRead
+		Programatic example to store/read secret data into/from LSA Protected storage,
+		using (deprecated, but still working (why?) interface 
+		LsaStorePrivateData/LsaRetrievePrivateData 
+		
+2. Build:
+	- nmake 
+	
+3. Notes:
+	Tested with MS Visual Studio 9.0 build environment.
