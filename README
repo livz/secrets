@@ -1,17 +1,21 @@
 1. Utils:
 	- encrypt/decrypt:
 		Programatic example to fie encryption/decryption using the Enhanced CSP
-		(Cryptographic Service Provider) from Win XP
+		(Cryptographic Service Provider) from Win XP.
 		
 	- protect: 
 		Programatic example for Windows Data protection API (DPAPI) user interface.
 		Protect and get info from data blobs.
 		
-	- lsaSecretStore/lsaSecretRead
+	- lsaSecretStore/lsaSecretRead:
 		Programatic example to store/read secret data into/from LSA Protected storage,
 		using (deprecated, but still working (why?) interface 
-		LsaStorePrivateData/LsaRetrievePrivateData 
-		
+		LsaStorePrivateData/LsaRetrievePrivateData.
+	
+	- chromePass:
+    	Unprotect and dump saved Chrome passwords from sqlite db. Tested with Chrome
+    	15.0.874, but should be almost the same for other versions.
+    
 2. Build:
 	- nmake 
 	
