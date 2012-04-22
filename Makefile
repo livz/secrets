@@ -27,11 +27,11 @@ lsaSecretRead lsaSecretStore: $@.obj lsa_util.obj
 chromePass:	$@.obj utils.obj
 	$(LNK) $(lDFLAGS) /out:$(OUTPUT_DIR)\$@.exe  $*.obj utils.obj $(SQLITE_DIR)\sqlite3.obj
 
-iePass: $@.obj
-	$(LNK) $(lDFLAGS) /out:$(OUTPUT_DIR)\$@.exe  $*.obj
+iePass: $@.obj utils.obj
+	$(LNK) $(lDFLAGS) /out:$(OUTPUT_DIR)\$@.exe  $*.obj utils.obj
 	
 clean:
-	del *.obj
+	del *.obj *.tli *.tlh
 	 
 cleanall:
-	del $(OUTPUT_DIR)\*.exe *.obj
+	del $(OUTPUT_DIR)\*.exe *.obj *.tli *.tlh
