@@ -15,6 +15,10 @@
 	- chromePass:
     	Unprotect and dump saved Chrome passwords from sqlite db. Tested with Chrome
     	15.0.874, but should be almost the same for other versions.
+    	
+   - IEPass:
+      Dump saved Internet Explorer (version <= 6) passwords from Protected
+      Storage
     
 2. Build:
 	- nmake 
