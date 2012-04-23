@@ -7,6 +7,8 @@ extern unsigned int log_level;
 #define LOG_LEVEL_VERBOSE           1
 #define LOG_LEVEL_NONE              0
 
+#pragma warning( disable: 4127)
+
 #define VERBOSE(code) do { if (log_level >= LOG_LEVEL_VERBOSE) { code } } while( 0 )
 #define VVERBOSE(code) do { if (log_level >= LOG_LEVEL_VERY_VERBOSE) {code } } while( 0 )
 

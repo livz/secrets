@@ -15,6 +15,7 @@ typedef HRESULT (WINAPI *PStoreCreateInstance_t)(IPStore **, DWORD, DWORD, DWORD
 
 static void usage(char* exe );
 static void dump_ie6();
+static void print_guid(GUID g);
 
 unsigned int log_level = LOG_LEVEL_NONE;
 
@@ -49,24 +50,7 @@ static void dump_ie6()
 {
     HRESULT rc = 0;
 
-    int lCounter = 0;
-    int lCounter2 = 0;
-    GUID lTypeGUID;
-    char lItemName[512];
-    char lItemData[512];
-    char lItemGUID[128];
-
-    GUID lSubTypeGUID;
-    char lCheckingData[256];
-    unsigned long lDataLength = 0;
-    unsigned char *lDataPointer = NULL;
-    _PST_PROMPTINFO *lPSTInfo = NULL;
-
-    IEnumPStoreItemsPtr lSPEnumItems;
-    IEnumPStoreTypesPtr lEnumSubTypes;
-    LPWSTR lTempItemName;
-
-    /* get PStoreCreateInstance function ptr from DLL */
+    /* Get PStoreCreateInstance function ptr from DLL */
     PStoreCreateInstance_t PStoreCreateInstance_func;
 
     HMODULE lib_handle = LoadLibrary("pstorec.dll");
@@ -95,110 +79,82 @@ static void dump_ie6()
         ExitProcess(1);
     }
 
-    while(enum_types->raw_Next(1, &lTypeGUID, 0) == S_OK)
+    GUID type, sub_type;
+    unsigned long num;
+    while((rc = enum_types->raw_Next(
+            1,          // number of types requested
+            &type,      // GUID
+            &num        // pointer to number of types fetched
+    ))>=0)
     {
-        wsprintf(lItemGUID, "%x", lTypeGUID);
-        ps_provider->EnumSubtypes(0, &lTypeGUID, 0, &lEnumSubTypes);
+        VERBOSE(printf("Fetched %d type(s): ", num); print_guid(type););
 
-        while(lEnumSubTypes->raw_Next(1, &lSubTypeGUID, 0) == S_OK)
+        /* Get an interface for enumerating sub-types */
+        IEnumPStoreTypesPtr enum_sub_types;
+        ps_provider->EnumSubtypes(0,    // PST_KEY_CURRENT_USER
+                &type,
+                0,                      // reserved, must be set to 0
+                &enum_sub_types);
+
+
+        while((rc = enum_sub_types->raw_Next(1,     // number of sub-types requested
+                &sub_type,                          // GUID
+                &num                                // pointer to number of types fetched
+        )) >=0)
         {
-            ps_provider->EnumItems(0, &lTypeGUID, &lSubTypeGUID, 0, &lSPEnumItems);
+            VERBOSE(printf(" Fetched %d sub-type(s): ", num); print_guid(sub_type););
 
+            /* Get an nterface for enumerating items */
+            IEnumPStoreItemsPtr enum_items;
+            ps_provider->EnumItems(0,       // PST_KEY_CURRENT_USER
+                    &type,                  // type GUID
+                    &sub_type,              // sub type GUID
+                    0,                      // reserved, must be 0
+                    &enum_items
+            );
 
-            while(lSPEnumItems->raw_Next(1, &lTempItemName, 0) == S_OK)
-            {
-                wsprintf(lItemName, "%ws", lTempItemName);
-                ps_provider->ReadItem(0, &lTypeGUID, &lSubTypeGUID, lTempItemName, &lDataLength, &lDataPointer, lPSTInfo, 0);
+            LPWSTR item;
+            while((rc=enum_items->raw_Next(1,   // number of items requested
+                    &item,
+                    &num
+            )) >=0) {
+                VERBOSE(printf("  Fetched %d item(s): ", num); wprintf(L"%ws\n", item););
 
-                if ((unsigned) lstrlen((char *)lDataPointer) < (lDataLength - 1))
-                {
-                    for(lCounter2 = 0, lCounter = 0; (unsigned) lCounter2 < lDataLength; lCounter2 += 2)
-                    {
-                        if (lDataPointer[lCounter2] == 0)
-                            lItemData[lCounter] = ',';
-                        else
-                            lItemData[lCounter] = lDataPointer[lCounter2];
+                unsigned long item_len = 0;
+                unsigned char *item_data = NULL;
 
-                        lCounter++;
-                    } // for(lCounter2 =...
+                ps_provider->ReadItem(0,    // PST_KEY_CURRENT_USER
+                        &type,              // GUID type
+                        &sub_type,          // GUID sub-type
+                        item,
+                        &item_len,          // stored item length
+                        &item_data,         // buffer that contains the stored item
+                        NULL,               // Pointer to prompt structure
+                        0);
+                VVERBOSE(printf("Item len: %d\n", item_len););
+                VVERBOSE(dump_bytes(item_data, item_len, 1););
 
-                    lItemData[lCounter - 1] = 0;
-                } else {
-                    wsprintf(lItemData, "%s", lDataPointer);
-                } // if ((unsigned) lstrl...
+                /* Free read item */
+                CoTaskMemFree(item);
+            }
+        }
+    }
+}
 
+/*typedef struct _GUID {
+    DWORD Data1;
+    WORD  Data2;
+    WORD  Data3;
+    BYTE  Data4[8];
+} GUID;*/
+static void print_guid(GUID g){
 
-                /*
-                 * 5e7e8100 - IE:Password-Protected sites
-                 *
-                 */
-
-                if (lstrcmp(lItemGUID, "5e7e8100") == 0)
-                {
-                    lstrcpy(lCheckingData, "");
-                    if (strstr(lItemData, ":") != 0)
-                    {
-                        lstrcpy(lCheckingData, strstr(lItemData,":") + 1);
-                        *(strstr(lItemData, ":")) = 0;
-                    } // if (strstr(lItemDa...
-
-                    printf("%-50s %-20s %-15s %-15s\n", lItemName, "PW rotected site", lItemData, lCheckingData);
-                } // if (lstrcmp(lItemGUI...
-
-
-
-                /*
-                 * e161255a IE
-                 *
-                 */
-
-                if (lstrcmp(lItemGUID, "e161255a") == 0)
-                {
-                    if (strstr(lItemName, "StringIndex") == 0)
-                    {
-                        if (strstr(lItemName, ":String") != 0)
-                            *strstr(lItemName, ":String") = 0;
-
-                        lstrcpyn(lCheckingData, lItemName, 8);
-                        if ((strstr(lCheckingData, "http:/") == 0) && (strstr(lCheckingData, "https:/") == 0))
-                            printf("%-50s %-20s %-15s %-15s\n", lItemName, "Auto complete", lItemData, "");
-                        else {
-                            lstrcpy(lCheckingData, "");
-                            if (strstr(lItemData, ",") != 0)
-                            {
-                                lstrcpy(lCheckingData, strstr(lItemData, ",") + 1);
-                                *(strstr(lItemData, ",")) = 0;
-                            } // if (strstr(lItem...
-                            printf("%-50s %-20s %-15s %-15s\n", lItemName, "Auto complete", lItemData, lCheckingData);
-
-                        } // if ((strstr(lCheckingD...
-                    } // if (strstr(lItemName, "StringIndex") ...
-                } else {
-                    if (strstr(lItemName, "StringIndex") == 0)
-                    {
-                        if (strstr(lItemName, ":String") != 0)
-                            *strstr(lItemName, ":String") = 0;
-
-                        lstrcpyn(lCheckingData, lItemName,8);
-                        if ((strstr(lCheckingData, "http:/") == 0) && (strstr(lCheckingData, "https:/") == 0))
-                            printf("%-50s %-20s %-15s %-15s\n", lItemName, "Auto complete", lItemData, "");
-                        else {
-                            lstrcpy(lCheckingData, "");
-                            if (strstr(lItemData, ",")!= 0)
-                            {
-                                lstrcpy(lCheckingData, strstr(lItemData, ",") + 1);
-                                *(strstr(lItemData, ","))=0;
-                            } // if (strstr(lIte...
-                            printf("%-50s %-20s %-15s %-15s\n", lItemName, "Auto complete", lItemData, lCheckingData);
-                        } // if ((strstr(lChecking...
-                    } // if (strstr(lItemNa...
-                } // if (lstrcmp(lItemGUID, "e161255a...
-
-                ZeroMemory(lItemName, sizeof(lItemName));
-                ZeroMemory(lItemData, sizeof(lItemData));
-
-            } // while(lSPEnumItems->raw_Ne...
-        } // while(lEnumSubTypes->raw_Next(1,...
-    } // while(lEnumPStoreTypes->raw_...
-
+    printf("%08x-%04hx-%04hx-", g.Data1, g.Data2, g.Data3);
+    for(int i = 0; i<8; ++i){
+        if(i==2) {
+            printf("-");
+        }
+        printf("%02x", g.Data4[i]);
+    }
+    printf("\n");
 }

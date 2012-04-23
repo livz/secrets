@@ -15,7 +15,9 @@ SQLITE_DIR=3rd_party\sqlite
 	@echo -------Compiling $<
 	$(CC) $(CCFLAGS) /I$(INC_DIR) $<
 
-all : protect encrypt decrypt lsaSecretRead lsaSecretStore
+all : protect encrypt decrypt lsaSecretRead lsaSecretStore chromePass iePass
+
+utils.obj : $(INC_DIR)\utils.h
 
 # Build executables with nmake macros
 protect encrypt decrypt: $@.obj

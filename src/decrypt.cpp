@@ -7,6 +7,8 @@
 // Link with the Advapi32.lib file.
 #pragma comment (lib, "advapi32")
 
+#pragma warning( disable: 4706)
+
 #define KEYLENGTH  0x00800000
 #define ENCRYPT_ALGORITHM CALG_RC4 
 #define ENCRYPT_BLOCK_SIZE 8 

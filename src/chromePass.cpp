@@ -9,17 +9,10 @@
 #include "sqlite3.h"
 #include "utils.h"
 
-#define LOG_LEVEL_VERY_VERBOSE		2
-#define LOG_LEVEL_VERBOSE			1
-#define LOG_LEVEL_NONE				0
-
-#define VERBOSE(code) do { if (log_level >= LOG_LEVEL_VERBOSE) { code } } while( 0 )
-#define VVERBOSE(code) do { if (log_level >= LOG_LEVEL_VERY_VERBOSE) {code } } while( 0 )
-
 static void usage(char* exe );
 static int process_row(void *NotUsed, int argc, char **argv, char **azColName);
 
-int log_level = LOG_LEVEL_NONE;
+unsigned int log_level = LOG_LEVEL_NONE;
 
 int main(int argc, char **argv){
 	sqlite3 *db = NULL;
