@@ -8,6 +8,9 @@ void dump_bytes(void* v, int size, int as_chars){
     unsigned char *array = (unsigned char*) v;
 
     for (i = 0; i<size; ++i){
+        if(!array[i]){
+            continue;
+        }
         printf(as_chars?"%c":"%02x ", array[i]);
         if( i%16 == 15 && !as_chars) {
             printf("\n");
