@@ -118,7 +118,7 @@ static void dump_ie6()
                     &item,
                     &num
             )) >=0) {
-                VERBOSE(printf("  Fetched %d item(s): ", num); wprintf(L"%ws\n", item););
+                printf("  Fetched %d item(s): ", num); wprintf(L"%ws\n", item);
 
                 unsigned long item_len = 0;
                 unsigned char *item_data = NULL;
@@ -132,7 +132,7 @@ static void dump_ie6()
                         NULL,               // Pointer to prompt structure
                         0);
                 VVERBOSE(printf("Item len: %d\n", item_len););
-                VVERBOSE(dump_bytes(item_data, item_len, 1););
+                dump_bytes(item_data, item_len, 1);
 
                 /* Free read item */
                 CoTaskMemFree(item);
