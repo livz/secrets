@@ -19,7 +19,7 @@ static char *GetFirefoxLibPath();
 
 unsigned int log_level = LOG_LEVEL_VERY_VERBOSE;
 
-#define MAX_KEY_LEN         128
+#define MAX_KEY_LEN         512
 
 int main(int argc, char **argv){
     char mk[MAX_KEY_LEN] = {0};
@@ -38,13 +38,18 @@ int main(int argc, char **argv){
         exit(1);
     }
 
-    get_user_profile_path();
-    char *ff_path = NULL;
-    ff_path = GetFirefoxLibPath();
+    char* ff_prof_path = NULL;
+    ff_prof_path = get_user_profile_path();
 
-    dump_ff();
+    char *ff_lib_path = NULL;
+    ff_lib_path = GetFirefoxLibPath();
 
-    free(ff_path);
+
+    //dump_ff();
+
+    free(ff_prof_path);
+    free(ff_lib_path);
+
     return 0;
 }
 
@@ -56,8 +61,7 @@ static void usage(char* exe ) {
             "-h\tHelp", exe );
 }
 
-static int dump_ff()
-{
+static int dump_ff() {
     int rc = 0;
     sqlite3 *db = NULL;
     char *err_msg = NULL;
@@ -184,11 +188,15 @@ static char *get_user_profile_path(){
             {
                 char *subdir = (strchr(line, '=') + 1);
                 strcat(prof_dir, subdir);
-                printf("User Profile dir: %s\n", prof_dir);
+                prof_dir[strlen(prof_dir)-1] = '\0';  // supress line termiantor '\n'
+                printf("Firefox Profile dir: [%s]\n", prof_dir);
             }
         }
 
     }
+
+    char *ret_prof_dir = (char*)malloc(sizeof(prof_dir));
+    strcpy(ret_prof_dir, prof_dir);
 
     fclose(profile);
 }
@@ -219,7 +227,7 @@ static char *GetFirefoxLibPath()
 
     RegCloseKey(rkey);
 
-    VERBOSE(printf("Path value read from registry is %s (len: %d)\n", path, pathSize););
+    VERBOSE(printf("Firefox.exe path: [%s] (len: %d)\n", path, pathSize););
 
     char * tmp = strrchr(path, '\\');   // Trim executable name
     *tmp = NULL;
