@@ -15,22 +15,22 @@ SQLITE_DIR=3rd_party\sqlite
 	@echo -------Compiling $<
 	$(CC) $(CCFLAGS) /I$(INC_DIR) $<
 
-all : protect encrypt decrypt lsaSecretRead lsaSecretStore chromePass iePass
+all : protect encrypt decrypt lsaSecretRead lsaSecretStore chromePass iePass firePass
 
 utils.obj : $(INC_DIR)\utils.h
 
 # Build executables with nmake macros
 protect encrypt decrypt: $@.obj
-	$(LNK) $(lDFLAGS) /out:$(OUTPUT_DIR)\$@.exe  $*.obj 
+	$(LNK) $(LDFLAGS) /out:$(OUTPUT_DIR)\$@.exe  $*.obj 
 
 lsaSecretRead lsaSecretStore: $@.obj lsa_util.obj
-	$(LNK) $(lDFLAGS) /out:$(OUTPUT_DIR)\$@.exe  $*.obj lsa_util.obj  
+	$(LNK) $(LDFLAGS) /out:$(OUTPUT_DIR)\$@.exe  $*.obj lsa_util.obj  
 
-chromePass:	$@.obj utils.obj
-	$(LNK) $(lDFLAGS) /out:$(OUTPUT_DIR)\$@.exe  $*.obj utils.obj $(SQLITE_DIR)\sqlite3.obj
+chromePass firePass:	$@.obj utils.obj
+	$(LNK) $(LDFLAGS) /out:$(OUTPUT_DIR)\$@.exe  $*.obj utils.obj $(SQLITE_DIR)\sqlite3.obj
 
 iePass: $@.obj utils.obj
-	$(LNK) $(lDFLAGS) /out:$(OUTPUT_DIR)\$@.exe  $*.obj utils.obj
+	$(LNK) $(LDFLAGS) /out:$(OUTPUT_DIR)\$@.exe  $*.obj utils.obj
 	
 clean:
 	del *.obj *.tli *.tlh

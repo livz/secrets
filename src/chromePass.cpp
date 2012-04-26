@@ -16,7 +16,7 @@ unsigned int log_level = LOG_LEVEL_NONE;
 
 int main(int argc, char **argv){
 	sqlite3 *db = NULL;
-	char *err_msg;
+	char *err_msg = NULL;
 	int rc = 0;
 
 	if (argc == 2) {
@@ -69,6 +69,7 @@ int main(int argc, char **argv){
 		sqlite3_free(err_msg);
 	}
 
+	sqlite3_free(err_msg);
 	sqlite3_close(db);
 
 	rc = DeleteFile("copy_db");
