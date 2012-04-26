@@ -18,6 +18,7 @@ SQLITE_DIR=3rd_party\sqlite
 all : protect encrypt decrypt lsaSecretRead lsaSecretStore chromePass iePass firePass
 
 utils.obj : $(INC_DIR)\utils.h
+firePass.obj : $(INC_DIR)\firePass.h
 
 # Build executables with nmake macros
 protect encrypt decrypt: $@.obj
@@ -26,7 +27,7 @@ protect encrypt decrypt: $@.obj
 lsaSecretRead lsaSecretStore: $@.obj lsa_util.obj
 	$(LNK) $(LDFLAGS) /out:$(OUTPUT_DIR)\$@.exe  $*.obj lsa_util.obj  
 
-chromePass firePass:	$@.obj utils.obj
+chromePass firePass: $@.obj utils.obj
 	$(LNK) $(LDFLAGS) /out:$(OUTPUT_DIR)\$@.exe  $*.obj utils.obj $(SQLITE_DIR)\sqlite3.obj
 
 iePass: $@.obj utils.obj
