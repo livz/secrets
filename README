@@ -21,8 +21,8 @@
 		Storage
 		
 	-firePass:
-		Dumps save Firefox Password. Optionally can use a master password to decrypt
-		them, if protected with master password. Tested with FF 12
+		Dumps saved Firefox Password. Use a master password to decrypt the key
+        if necessary Tested with FF 12
 
 2. Build:
 	- nmake

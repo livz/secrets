@@ -103,8 +103,7 @@ static void usage(char* exe ) {
     printf( "Dump (and decrypt) saved FireFox passwords\n" );
     printf( "(tested with FF 10)\n" );
     printf( "Usage: %s passwd\n" \
-            "passwd\tOptional master password\n" \
-            "-h\tHelp", exe );
+            "passwd\tOptional master password\n", exe);
 }
 
 static int dump_ff(char* ff_prof_path) {
