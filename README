@@ -19,6 +19,7 @@
 	- IEPass:
 		Dump saved Internet Explorer (version <= 6) passwords from Protected
 		Storage
+		Dump save IE password (version >6)
 		
 	-firePass:
 		Dumps saved Firefox Password. Use a master password to decrypt the key

@@ -14,12 +14,16 @@
 typedef HRESULT (WINAPI *PStoreCreateInstance_t)(IPStore **, DWORD, DWORD, DWORD);
 
 static void usage(char* exe );
+static int get_ie_ver();
 static void dump_ie6();
+static void dump_ie7();
 static void print_guid(GUID g);
 
 unsigned int log_level = LOG_LEVEL_NONE;
 
 int main(int argc, char **argv){
+    int version = 0;
+
     if (argc == 2) {
         if ( !strncmp(argv[1], "-vv", 3)) {
             log_level = LOG_LEVEL_VERY_VERBOSE;
@@ -35,15 +39,55 @@ int main(int argc, char **argv){
         exit(1);
     }
 
+    version = get_ie_ver();
+    printf("IE version: %d\n", version);
+
+    // HKEY_CURRENT_USER\Software\Microsoft\Protected Storage System Provider
+    // SYSTEM permissions
+    VERBOSE(printf("Dumping password from Protected Store:\n"););
     dump_ie6();
+
+    // HKEY_CURRENT_USER\Software\Microsoft\Internet Explorer\IntelliForms\Storage2
+    VERBOSE(printf("Dumping password from Credentials Store:\n"););
+    dump_ie7();
 
     return 0;
 }
 
 static void usage(char* exe ) {
     printf( "Unprotect and dump saved IE passwords\n" );
-    printf( "(tested with IE6)\n" );
     printf( "%s [-v | -vv | -h]\n-v\tVerbose\n-vv\tVery verbose\n-h\tHelp", exe );
+}
+
+static int get_ie_ver(){
+    char regKeyName[] = "SOFTWARE\\Microsoft\\Internet Explorer";
+    char regValueName[] = "version";
+
+    char val[_MAX_PATH] ="";
+    DWORD valSize = _MAX_PATH;
+    DWORD valType;
+
+    HKEY rkey = 0;
+
+    /* Open IE registry key*/
+    if( RegOpenKeyEx(HKEY_LOCAL_MACHINE, regKeyName, 0, KEY_READ, &rkey) != ERROR_SUCCESS )
+    {
+        printf("Failed to open key : HKLM\\%s\n", regKeyName );
+        return 1;
+    }
+
+    /*Read the version value*/
+    if( RegQueryValueEx(rkey, regValueName, 0,  &valType, (unsigned char*)&val, &valSize) != ERROR_SUCCESS )
+    {
+        printf("Failed to read the key %s\n", regValueName);
+        RegCloseKey(rkey);
+        return 1;
+    }
+    VVERBOSE(printf("Type: %d, value: %s\n", valType, val););
+
+    RegCloseKey(rkey);
+
+    return atoi(val);
 }
 
 static void dump_ie6()
@@ -139,6 +183,11 @@ static void dump_ie6()
             }
         }
     }
+}
+
+static void dump_ie7()
+{
+//http://www.securityfocus.com/archive/1/458115/30/0/threaded
 }
 
 /*typedef struct _GUID {
