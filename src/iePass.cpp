@@ -2,6 +2,8 @@
 
 #include <windows.h>
 #include <stdio.h>
+#include <UrlHist.h> //IUrlHistoryStg2
+#include <shlguid.h> //CLSID_CUrlHistory
 
 #include "utils.h"
 
@@ -11,13 +13,21 @@
 /* Link with the Advapi32.lib file */
 #pragma comment(lib, "Advapi32.lib")
 
+// Link with crypt32.lib
+#pragma comment(lib, "crypt32.lib")
+
 typedef HRESULT (WINAPI *PStoreCreateInstance_t)(IPStore **, DWORD, DWORD, DWORD);
+
+#define URL_HISTORY_MAX 50000
 
 static void usage(char* exe );
 static int get_ie_ver();
 static void dump_ie6();
 static void dump_ie7();
 static void print_guid(GUID g);
+static int GetUrlHistory(wchar_t *UrlHistory[URL_HISTORY_MAX]);
+static void GetHashStr(wchar_t *Password,char *HashStr);
+static void PrintData(char *Data);
 
 unsigned int log_level = LOG_LEVEL_NONE;
 
@@ -185,9 +195,72 @@ static void dump_ie6()
     }
 }
 
+/* Original work: SapporoWorks
+http://www.securityfocus.com/archive/1/458115/30/0/threaded
+ */
 static void dump_ie7()
 {
-//http://www.securityfocus.com/archive/1/458115/30/0/threaded
+    // retrieve URL from the history
+    wchar_t *UrlHistory[URL_HISTORY_MAX];
+    int UrlListoryMax = GetUrlHistory(UrlHistory);
+
+    char *KeyStr = {"Software\\Microsoft\\Internet Explorer\\IntelliForms\\Storage2"};
+    HKEY hKey;
+    // enumerate values of the target registry
+
+    if(ERROR_SUCCESS != RegOpenKeyEx(HKEY_CURRENT_USER,KeyStr,0,KEY_QUERY_VALUE,&hKey)){
+        printf("RegOpenKeyEx error\n");
+    }
+
+    for(int i=0; ; i++){
+        char Val[1024];
+        DWORD Size = 1024;
+        if(ERROR_NO_MORE_ITEMS==RegEnumValue(hKey,i,Val, &Size,
+                NULL,NULL, NULL, NULL)) {
+            break;
+        }
+
+        // compare the value of the retrieved registry with the hash
+        // value of the history URL
+        for(int n=0;n<UrlListoryMax;n++){
+            char HashStr[1024];
+            // calculate hash using URL as Password
+            GetHashStr(UrlHistory[n],HashStr);
+            if(strcmp(Val,HashStr)==0){// find password URL
+                VERBOSE(printf("ur : %ls\n",UrlHistory[n]););
+                VERBOSE(printf("hash : %s\n",HashStr););
+                // retrieve data from the registry
+                DWORD BufferLen;
+                DWORD dwType;
+
+                RegQueryValueEx(hKey,Val,0,&dwType,NULL,&BufferLen);
+                BYTE *Buffer = new BYTE[BufferLen];
+
+                if(RegQueryValueEx(hKey,Val,0,&dwType,Buffer,&BufferLen)==ERROR_SUCCESS){
+                    DATA_BLOB DataIn;
+                    DATA_BLOB DataOut;
+                    DATA_BLOB OptionalEntropy;
+                    DataIn.pbData = Buffer;
+                    DataIn.cbData = BufferLen;
+                    OptionalEntropy.pbData = (unsigned char
+                            *)UrlHistory[n];
+                    OptionalEntropy.cbData =
+                            (wcslen(UrlHistory[n])+1)*2;
+
+                    if(CryptUnprotectData(&DataIn,0,&OptionalEntropy,NULL,NULL,1,&DataOut))
+                    {
+                        //display the decoded data
+                        PrintData((char *)DataOut.pbData);
+                        LocalFree(DataOut.pbData);
+                    }
+                    delete [] Buffer;
+                }
+                break;
+            }
+        }
+    }
+    RegCloseKey(hKey);
+
 }
 
 /*typedef struct _GUID {
@@ -206,4 +279,146 @@ static void print_guid(GUID g){
         printf("%02x", g.Data4[i]);
     }
     printf("\n");
+}
+
+// retrieve the history of URLs
+static int GetUrlHistory(wchar_t *UrlHistory[URL_HISTORY_MAX])
+{
+    int max = 0;
+    HRESULT hr;
+
+    CoInitialize(NULL);// COM Initialization
+    IUrlHistoryStg2* pUrlHistoryStg2=NULL;
+    hr = CoCreateInstance(CLSID_CUrlHistory, NULL,
+            CLSCTX_INPROC_SERVER,IID_IUrlHistoryStg2,(void**)(&pUrlHistoryStg2));
+    if(!SUCCEEDED(hr)){
+        return -1;
+    }
+
+    IEnumSTATURL* pEnumUrls;
+    hr = pUrlHistoryStg2->EnumUrls(&pEnumUrls);
+    if (!SUCCEEDED(hr)){
+        return -1;
+    }
+
+    STATURL StatUrl[1];
+    ULONG ulFetched;
+    while (max<URL_HISTORY_MAX && (hr = pEnumUrls->Next(1,
+            StatUrl, &ulFetched)) == S_OK){
+        if (StatUrl->pwcsUrl != NULL) {
+            // If there is a parameter,delete it.
+            wchar_t *p;
+            if(NULL!=(p = wcschr(StatUrl->pwcsUrl,'?')))
+                *p='\0';
+            UrlHistory[max] = new
+                    wchar_t[wcslen(StatUrl->pwcsUrl)+1];
+            wcscpy(UrlHistory[max],StatUrl->pwcsUrl);
+            max++;
+        }
+    }
+
+    pEnumUrls->Release();
+    pUrlHistoryStg2->Release();
+
+    CoUninitialize();
+
+    return max;
+}
+
+/* Calculate the hash value from Password, and retrieve it as a
+character string */
+static void GetHashStr(wchar_t *Password,char *HashStr)
+{
+    HashStr[0]='\0';
+    HCRYPTPROV  hProv = NULL;
+    HCRYPTHASH  hHash = NULL;
+    CryptAcquireContext(&hProv, 0,0,PROV_RSA_FULL,0);
+
+    //  instance of hash calculation
+    if(!CryptCreateHash(hProv,CALG_SHA1, 0, 0,&hHash)){
+        return;
+    }
+
+    //calculation of hash value
+    if(!CryptHashData(hHash,(unsigned char *)Password,
+            (wcslen(Password)+1)*2,0)){
+        return;
+    }
+
+    // retrieve 20 bytes of hash value
+    DWORD dwHashLen=20;
+    BYTE Buffer[20];
+
+    if(!CryptGetHashParam(hHash, HP_HASHVAL, Buffer, &dwHashLen, 0)){
+        return;
+    }
+
+    CryptDestroyHash(hHash);
+    CryptReleaseContext(hProv, 0);
+
+    // creation of character string based on hash
+    char TmpBuf[128];
+    unsigned char tail=0;// variable to calculate value for the last 2 bytes
+    // convert to a character string in hexadecimal
+    for(int i=0; i<20; i++){
+        unsigned char c = Buffer[i];
+        tail+=c;
+        wsprintf(TmpBuf,"%s%2.2X",HashStr,c);
+        strcpy(HashStr,TmpBuf);
+    }
+    // add the last 2 bytes
+    wsprintf(TmpBuf,"%s%2.2X",HashStr,tail);
+    strcpy(HashStr,TmpBuf);
+}
+
+static void PrintData(char *Data)
+{
+    unsigned int HeaderSize;
+    unsigned int DataSize;
+    unsigned int DataMax;
+    //the 4th byte from the beginning is Header size
+    memcpy(&HeaderSize,&Data[4],4);
+
+    //the 8th byte from the beginning is Data size
+    memcpy(&DataSize,&Data[8],4);
+
+    //the 20th byte from the beginning is Data number
+    memcpy(&DataMax,&Data[20],4);
+
+    printf("HeaderSize=%d DataSize=%d DataMax=%d\n",
+            HeaderSize,DataSize,DataMax);
+
+    char *pInfo = &Data[36];
+
+    // afterwards, the same number of information data (16 bytes)
+    // as the data number comes
+    for(unsigned int n=0;n<DataMax;n++){
+        FILETIME ft,ftLocal;
+        SYSTEMTIME st;
+        unsigned int offset;
+        // the 0th byte from the beginning of information data is
+        // the offset of the data
+        memcpy(&offset,pInfo,4);
+
+        // the 4th byte from the beginning of information data is the date
+        memcpy(&ft,pInfo+4,8);
+
+        // the 12th byte from the beginning of information data is
+        // the data length
+        FileTimeToLocalFileTime(&ft,&ftLocal);
+        FileTimeToSystemTime(&ftLocal, &st);
+
+        char TmpBuf[1024];
+        int len = WideCharToMultiByte(CP_THREAD_ACP, 0,(wchar_t*)
+                &Data[HeaderSize+12+offset], -1, NULL, 0, NULL, NULL );
+        if(-1!=len){
+            WideCharToMultiByte(CP_THREAD_ACP, 0,
+                    (wchar_t*)&Data[HeaderSize+12+offset],
+                    wcslen((wchar_t*)&Data[HeaderSize+12+offset])+1, TmpBuf, len,
+                    NULL, NULL );
+            printf("[%d][%4.4d/%2.2d/%2.2d %2.2d:%2.2d]%s\n",
+                    n,st.wYear,st.wMonth,st.wDay,st.wHour,st.wMinute,TmpBuf);
+        }
+        pInfo+=16;
+    }
 }
