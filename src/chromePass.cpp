@@ -12,42 +12,27 @@
 static void usage(char* exe );
 static int process_row(void *NotUsed, int argc, char **argv, char **azColName);
 
-unsigned int log_level = LOG_LEVEL_NONE;
+unsigned int log_level = LOG_LEVEL_VERBOSE;;
 
 int main(int argc, char **argv){
 	sqlite3 *db = NULL;
 	char *err_msg = NULL;
 	int rc = 0;
+	char login_db[256] = {0};
 
 	if (argc == 2) {
-		if ( !strncmp(argv[1], "-vv", 3)) {
-			log_level = LOG_LEVEL_VERY_VERBOSE;
-		} else if (!strncmp(argv[1], "-v", 2)) {
-			log_level = LOG_LEVEL_VERBOSE;
-		}
-		else if (!strncmp(argv[1], "-h", 2)) {
-			usage(argv[0]);
-			exit(0);
-		}
-	} else if (argc >= 3) {
-		printf("Invalid parameters\n");
+	    if (!strncmp(argv[1], "-h", 2)) {
+	        usage(argv[0]);
+	        exit(0);
+	    } else {
+	        strcat(login_db, argv[1]);
+	        VERBOSE(printf("Using login database: %s", login_db););
+	    }
+	} else {
+		printf("--Invalid parameters--\n");
+		usage(argv[0]);
 		exit(1);
 	}
-
-	/* Get chrome passwords database */
-	char user_profile[100];
-	rc = GetEnvironmentVariable("UserProfile", user_profile, 100);
-	if(0 != rc){
-		VVERBOSE(printf("UserProfile folder: %s\n", user_profile););
-	}
-
-	char login_db[200] = {0};
-	strcat(login_db, user_profile);
-	strcat(login_db, "\\Local Settings\\Application Data\\Google\\Chrome\\User Data\\Default\\Login Data");
-	VVERBOSE(printf("Db: %s\n", login_db););
-	/* Location valid on WinXP. From Vista changed to
-	 C:\Users\<username>\Appdata\Local\Google\Chrome\User Data\Default
-	*/
 
 	/* Use a copy of the db. (original may be already locked) */
 	rc = CopyFile(login_db, "copy_db",FALSE);
@@ -82,7 +67,17 @@ int main(int argc, char **argv){
 
 static void usage(char* exe ) {
 	printf( "Unprotect and dump saved chrome passwords\n" );
-	printf( "%s [-v | -vv | -h]\n-v\tVerbose\n-vv\tVery verbose\n-h\tHelp", exe );
+	printf( "Usage: %s [Login database]\n", exe );
+	char user_profile[100] = {0};
+	GetEnvironmentVariable("UserProfile", user_profile, 100);
+
+	printf( "WinXP: %s\\Local Settings\\Application Data\\Google\\Chrome\\User Data\\Default\\Login Data\n",
+	        user_profile);
+	printf( "Win7: C:\\Users\\<username>\\Appdata\\Local\\Google\\Chrome\\User Data\\Default\\Login Data\n");
+	printf( "Ubuntu: \n");
+#ifdef WIN32
+	printf("muha\n");
+#endif /* WIN32 */
 }
 
 static int row_id = 1;
