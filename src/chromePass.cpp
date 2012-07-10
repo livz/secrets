@@ -4,11 +4,11 @@
 #include <string.h>
 #include <stdlib.h>
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <windows.h>
 // Link with crypt32.lib
 #pragma comment(lib, "crypt32.lib")
-#endif /* WIN32 */
+#endif /* _WIN32 */
 
 #include "sqlite3.h"
 #include "utils.h"
@@ -18,9 +18,9 @@ static int process_row(void *NotUsed, int argc, char **argv, char **azColName);
 
 unsigned int log_level = LOG_LEVEL_VERBOSE;;
 
-#ifndef WIN32
+#ifndef _WIN32
 #define 	BYTE	char
-#endif /* WIN32 */
+#endif /* _WIN32 */
 
 int main(int argc, char **argv){
 	sqlite3 *db = NULL;
@@ -66,14 +66,14 @@ static void usage(char* exe ) {
 	printf( "Unprotect and dump saved chrome passwords\n" );
 	printf( "For \"File locked\" error close browser\n" );
 	printf( "Usage: %s [Login database]\n", exe );
-#ifdef WIN32
+#ifdef _WIN32
 	char user_profile[100] = {0};
 	GetEnvironmentVariable("UserProfile", user_profile, 100);
 
 	printf( "WinXP: %s\\Local Settings\\Application Data\\Google\\Chrome\\User Data\\Default\\Login Data\n",
 	        user_profile);
 	printf( "Win7: C:\\Users\\<username>\\Appdata\\Local\\Google\\Chrome\\User Data\\Default\\Login Data\n");
-#endif /* WIN32 */
+#endif /* _WIN32 */
 	printf( "Ubuntu: ~/.config/google-chrome/Default/Login\\ Data\n");
 }
 
@@ -93,7 +93,7 @@ static int process_row(void *passed_db, int argc, char **argv, char **col_name){
 			/* For linux with --password-store=basic, password is in plain text */
 			printf("Password: %s\n", argv[i]);
 /* For Windows pass is stored encrypted in a BLOB */
-#ifdef WIN32 
+#ifdef _WIN32
 			int rc = 0;
 			sqlite3 *db = (sqlite3*)passed_db;
 			sqlite3_blob* blob = NULL;
@@ -140,7 +140,7 @@ static int process_row(void *passed_db, int argc, char **argv, char **col_name){
 
 			free(blob_data);
 			sqlite3_blob_close(blob);
-#endif /* WIN32 */
+#endif /* _WIN32 */
 		}
 	}
 
