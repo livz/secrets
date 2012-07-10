@@ -1,10 +1,14 @@
 #define _CRT_SECURE_NO_WARNINGS
 
-#include <windows.h>
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 
+#ifdef WIN32
+#include <windows.h>
 // Link with crypt32.lib
 #pragma comment(lib, "crypt32.lib")
+#endif /* WIN32 */
 
 #include "sqlite3.h"
 #include "utils.h"
@@ -13,6 +17,10 @@ static void usage(char* exe );
 static int process_row(void *NotUsed, int argc, char **argv, char **azColName);
 
 unsigned int log_level = LOG_LEVEL_VERBOSE;;
+
+#ifndef WIN32
+#define 	BYTE	char
+#endif /* WIN32 */
 
 int main(int argc, char **argv){
 	sqlite3 *db = NULL;
@@ -34,14 +42,8 @@ int main(int argc, char **argv){
 		exit(1);
 	}
 
-	/* Use a copy of the db. (original may be already locked) */
-	rc = CopyFile(login_db, "copy_db",FALSE);
-	if(!rc){
-		fprintf(stderr, "CopyFile failed\n");
-		exit(1);
-	}
 
-	rc = sqlite3_open("copy_db", &db);
+	rc = sqlite3_open(login_db, &db);
 	if(rc){
 		fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
 		sqlite3_close(db);
@@ -57,37 +59,28 @@ int main(int argc, char **argv){
 	sqlite3_free(err_msg);
 	sqlite3_close(db);
 
-	rc = DeleteFile("copy_db");
-	if( !rc ){
-		fprintf(stderr, "DeleteFile failed\n");
-	}
-
 	return 0;
 }
 
 static void usage(char* exe ) {
 	printf( "Unprotect and dump saved chrome passwords\n" );
+	printf( "For \"File locked\" error close browser\n" );
 	printf( "Usage: %s [Login database]\n", exe );
+#ifdef WIN32
 	char user_profile[100] = {0};
 	GetEnvironmentVariable("UserProfile", user_profile, 100);
 
 	printf( "WinXP: %s\\Local Settings\\Application Data\\Google\\Chrome\\User Data\\Default\\Login Data\n",
 	        user_profile);
 	printf( "Win7: C:\\Users\\<username>\\Appdata\\Local\\Google\\Chrome\\User Data\\Default\\Login Data\n");
-	printf( "Ubuntu: \n");
-#ifdef WIN32
-	printf("muha\n");
 #endif /* WIN32 */
+	printf( "Ubuntu: ~/.config/google-chrome/Default/Login\\ Data\n");
 }
 
 static int row_id = 1;
 /* 4th argument of sqlite3_exec is the 1st argument to callback */
 static int process_row(void *passed_db, int argc, char **argv, char **col_name){
 	int i = 0;
-	int rc = 0;
-	sqlite3 *db = (sqlite3*)passed_db;
-	sqlite3_blob* blob = NULL;
-	int blob_size = 0;
 
 	for(i=0; i<argc; i++){
 		if( !strcmp(col_name[i], "origin_url")) {
@@ -97,6 +90,14 @@ static int process_row(void *passed_db, int argc, char **argv, char **col_name){
 		} else if ( !strcmp(col_name[i], "password_value")) {
 			if(!argv[i])
 				continue;
+			/* For linux with --password-store=basic, password is in plain text */
+			printf("Password: %s\n", argv[i]);
+/* For Windows pass is stored encrypted in a BLOB */
+#ifdef WIN32 
+			int rc = 0;
+			sqlite3 *db = (sqlite3*)passed_db;
+			sqlite3_blob* blob = NULL;
+			int blob_size = 0;
 
 			VERBOSE(printf("row_id: %d\n", row_id););
 			/* password is stored in a blob */
@@ -110,17 +111,18 @@ static int process_row(void *passed_db, int argc, char **argv, char **col_name){
 			blob_size = sqlite3_blob_bytes(blob);
 			VVERBOSE(printf("Read blob %p with size %d\n", blob, blob_size););
 
-			DATA_BLOB enc_data;
-			enc_data.pbData = (BYTE*)malloc(blob_size);;
-			enc_data.cbData = blob_size;
-
-			rc = sqlite3_blob_read(blob, enc_data.pbData, blob_size, 0);
+			BYTE* blob_data = (BYTE*)malloc(blob_size);
+			rc = sqlite3_blob_read(blob, blob_data, blob_size, 0);
 			if (rc != SQLITE_OK){
 				fprintf(stderr, "Blob read error (code %d)\n", rc);
 				continue;
 			}
 
-			VVERBOSE(dump_bytes(enc_data.pbData, blob_size, 0););
+			VVERBOSE(dump_bytes(blob_data, blob_size, 0););
+			DATA_BLOB enc_data;
+			enc_data.pbData = blob_data;
+			enc_data.cbData = blob_size;
+
 
 			/* decrypt data */
 			DATA_BLOB dec_data;
@@ -134,10 +136,11 @@ static int process_row(void *passed_db, int argc, char **argv, char **col_name){
 			}
 
 			/* cleanup */
-			free(enc_data.pbData);	// Allocated with malloc !!!
 			LocalFree(dec_data.pbData);
 
+			free(blob_data);
 			sqlite3_blob_close(blob);
+#endif /* WIN32 */
 		}
 	}
 
