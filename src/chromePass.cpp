@@ -34,7 +34,7 @@ int main(int argc, char **argv){
 	        exit(0);
 	    } else {
 	        strcat(login_db, argv[1]);
-	        VERBOSE(printf("Using login database: %s", login_db););
+	        VERBOSE(printf("Using login database: %s\n", login_db););
 	    }
 	} else {
 		printf("--Invalid parameters--\n");
@@ -54,6 +54,7 @@ int main(int argc, char **argv){
 	if( rc != SQLITE_OK ){
 		fprintf(stderr, "SQL error: %s (%d)\n", err_msg, rc);
 		sqlite3_free(err_msg);
+		exit(1);
 	}
 
 	sqlite3_free(err_msg);
